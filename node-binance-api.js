@@ -504,6 +504,9 @@ module.exports = function() {
 						callback(priceData(JSON.parse(body)));
 					} catch (error) {
 						console.log("Parse error: "+error.message);
+						if ( errorCallback ) {
+							errorCallback(error);
+						}
 					}
 				}
 			}, errorCallback);
@@ -516,6 +519,9 @@ module.exports = function() {
 						callback(bookPriceData(JSON.parse(body)));
 					} catch (error) {
 						console.log("Parse error: "+error.message);
+						if ( errorCallback ) {
+							errorCallback(error);
+						}
 					}
 				}
 			}, errorCallback);
