@@ -220,36 +220,44 @@ module.exports = function() {
 	////////////////////////////
 	const priceData = function(data) {
 		let prices = {};
-		for ( let obj of data ) {
-			prices[obj.symbol] = obj.price;
+		if ( data ) {
+			for ( let obj of data ) {
+				prices[obj.symbol] = obj.price;
+			}
 		}
 		return prices;
 	};
 	const bookPriceData = function(data) {
 		let prices = {};
-		for ( let obj of data ) {
-			prices[obj.symbol] = {
-				bid:obj.bidPrice,
-				bids:obj.bidQty,
-				ask:obj.askPrice,
-				asks:obj.askQty
-			};
+		if ( data ) {
+			for ( let obj of data ) {
+				prices[obj.symbol] = {
+					bid:obj.bidPrice,
+					bids:obj.bidQty,
+					ask:obj.askPrice,
+					asks:obj.askQty
+				};
+			}
 		}
 		return prices;
 	};
 	const balanceData = function(data) {
 		let balances = {};
-		for ( let obj of data.balances ) {
-			balances[obj.asset] = {available:obj.free, onOrder:obj.locked};
+		if ( data && data.balances ) {
+			for ( let obj of data.balances ) {
+				balances[obj.asset] = {available:obj.free, onOrder:obj.locked};
+			}
 		}
 		return balances;
 	};
 	const klineData = function(symbol, interval, ticks) { // Used for /depth
 		let last_time = 0;
-		for ( let tick of ticks ) {
-			let [time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored] = tick;
-			ohlc[symbol][interval][time] = {open:open, high:high, low:low, close:close, volume:volume};
-			last_time = time;
+		if ( ticks ) {
+			for ( let tick of ticks ) {
+				let [time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored] = tick;
+				ohlc[symbol][interval][time] = {open:open, high:high, low:low, close:close, volume:volume};
+				last_time = time;
+			}
 		}
 		info[symbol][interval].timestamp = last_time;
 	};
