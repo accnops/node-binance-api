@@ -23,7 +23,7 @@ module.exports = function() {
 	let ohlc = {};
 	let options = {recvWindow:60000, reconnect:true};
 	
-	const publicRequest = function(url, data, callback, method = "GET") {
+	const publicRequest = function(url, data, callback = false, errorCallback = false, method = "GET") {
 		if ( !data ) data = {};
 		let opt = {
 			url: url,
@@ -37,18 +37,28 @@ module.exports = function() {
 			}
 		};
 		request(opt, function(error, response, body) {
-			if ( !response || !body ) throw "publicRequest error: "+error;
+			if ( !response || !body ) {
+				if ( errorCallback ) {
+					errorCallback(error);
+				} else {
+					throw "publicRequest error: " + error;
+				}
+			}
+
 			if ( callback ) {
 				try {
 					callback(JSON.parse(body));
 				} catch (error) {
-					console.log("Parse error: "+error.message);
+					console.log("Parse error: " + error.message);
+					if ( errorCallback ) {
+						errorCallback(error);
+					}
 				}
 			}
 		});
 	};
 	
-	const apiRequest = function(url, callback, method = "GET") {
+	const apiRequest = function(url, callback = false, errorCallback = false, method = "GET") {
 		if ( !options.APIKEY ) throw "apiRequest: Invalid API Key";
 		let opt = {
 			url: url,
@@ -62,18 +72,28 @@ module.exports = function() {
 			}
 		};
 		request(opt, function(error, response, body) {
-			if ( !response || !body ) throw "apiRequest error: "+error;
+			if ( !response || !body ) {
+				if ( errorCallback ) {
+					errorCallback(error);
+				} else {
+					throw "apiRequest error: " + error;
+				}
+			}
+
 			if ( callback ) {
 				try {
 					callback(JSON.parse(body));
 				} catch (error) {
 					console.log("Parse error: "+error.message);
+					if ( errorCallback ) {
+						errorCallback(error);
+					}
 				}
 			}
 		});
 	};
 		
-	const signedRequest = function(url, data, callback, method = "GET") {
+	const signedRequest = function(url, data, callback = false, errorCallback = false, method = "GET") {
 		if ( !options.APISECRET ) throw "signedRequest: Invalid API Secret";
 		if ( !data ) data = {};
 		data.timestamp = new Date().getTime();
@@ -93,18 +113,28 @@ module.exports = function() {
 			}
 		};
 		request(opt, function(error, response, body) {
-			if ( !response || !body ) throw "signedRequest error: "+error;
+			if ( !response || !body ) {
+				if ( errorCallback ) {
+					errorCallback(error);
+				} else {
+					throw "signedRequest error: " + error;
+				}
+			}
+
 			if ( callback ) {
 				try {
 					callback(JSON.parse(body));
 				} catch (error) {
 					console.log("Parse error: "+error.message);
+					if ( errorCallback ) {
+						errorCallback(error);
+					}
 				}
 			}
 		});
 	};
 	
-	const order = function(side, symbol, quantity, price, flags = {}, callback = false) {
+	const order = function(side, symbol, quantity, price, flags = {}, callback = false, errorCallback = false) {
 		let opt = {
 			symbol: symbol,
 			side: side,
@@ -429,44 +459,44 @@ module.exports = function() {
 		marketSell: function(symbol, quantity, callback = false) {
 			order("SELL", symbol, quantity, 0, {type:"MARKET"}, callback);
 		},
-		cancel: function(symbol, orderid, callback = false) {
+		cancel: function(symbol, orderid, callback = false, errorCallback = false) {
 			signedRequest(base+"v3/order", {symbol:symbol, orderId:orderid}, function(data) {
 				if ( callback ) return callback.call(this, data, symbol);
-			}, "DELETE");
+			}, errorCallback, "DELETE");
 		},
-		orderStatus: function(symbol, orderid, callback) {
+		orderStatus: function(symbol, orderid, callback = false, errorCallback = false) {
 			signedRequest(base+"v3/order", {symbol:symbol, orderId:orderid}, function(data) {
 				if ( callback ) return callback.call(this, data, symbol);
-			});
+			}, errorCallback);
 		},
-		openOrders: function(symbol, callback) {
+		openOrders: function(symbol, callback = false, errorCallback = false) {
 			let postData = symbol ? {symbol:symbol} : {};
 			signedRequest(base+"v3/openOrders", postData, function(data) {
 				return callback.call(this, data, symbol);
-			});
+			}, errorCallback);
 		},
-		cancelOrders: function(symbol, callback = false) {
+		cancelOrders: function(symbol, callback = false, errorCallback = false) {
 			signedRequest(base+"v3/openOrders", {symbol:symbol}, function(json) {
 				for ( let obj of json ) {
 					let quantity = obj.origQty - obj.executedQty;
 					console.log("cancel order: "+obj.side+" "+symbol+" "+quantity+" @ "+obj.price+" #"+obj.orderId);
 					signedRequest(base+"v3/order", {symbol:symbol, orderId:obj.orderId}, function(data) {
 						if ( callback ) return callback.call(this, data, symbol);
-					}, "DELETE");
+					}, errorCallback, "DELETE");
 				}
 			});
 		},
-		allOrders: function(symbol, callback) {
+		allOrders: function(symbol, callback = false, errorCallback = false) {
 			signedRequest(base+"v3/allOrders", {symbol:symbol, limit:500}, function(data) {
 				if ( callback ) return callback.call(this, data, symbol);
-			});
+			}, errorCallback);
 		},
-		depth: function(symbol, callback, limit = 100) {
+		depth: function(symbol, callback = false, errorCallback = false, limit = 100) {
 			publicRequest(base+"v1/depth", {symbol:symbol, limit:limit}, function(data) {
 				return callback.call(this, depthData(data), symbol);
-			});
+			}, errorCallback);
 		},
-		prices: function(callback) {
+		prices: function(callback = false, errorCallback = false) {
 			request(base+"v1/ticker/allPrices", function(error, response, body) {
 				if ( !response || !body ) throw "allPrices error: "+error;
 				if ( callback ) {
@@ -476,9 +506,9 @@ module.exports = function() {
 						console.log("Parse error: "+error.message);
 					}
 				}
-			});
+			}, errorCallback);
 		},
-		bookTickers: function(callback) {
+		bookTickers: function(callback = false, errorCallback = false) {
 			request(base+"v1/ticker/allBookTickers", function(error, response, body) {
 				if ( !response || !body ) throw "allBookTickers error: "+error;
 				if ( callback ) {
@@ -488,55 +518,55 @@ module.exports = function() {
 						console.log("Parse error: "+error.message);
 					}
 				}
-			});
+			}, errorCallback);
 		},
-		prevDay: function(symbol, callback) {
+		prevDay: function(symbol, callback = false, errorCallback = false) {
 			let input = symbol ? {symbol:symbol} : {};
 			publicRequest(base+"v1/ticker/24hr", input, function(data) {
 				if ( callback ) return callback.call(this, data, symbol);
-			});
+			}, errorCallback);
 		},
-		exchangeInfo: function(callback) {
-			publicRequest(base+"v1/exchangeInfo", {}, callback);
+		exchangeInfo: function(callback = false, errorCallback = false) {
+			publicRequest(base+"v1/exchangeInfo", {}, callback, errorCallback);
 		},
-		withdraw: function(asset, address, amount, addressTag = false, callback = false) {
+		withdraw: function(asset, address, amount, addressTag = false, callback = false, errorCallback = false) {
 			let params = {asset, address, amount};
 			params.name = "API Withdraw";
 			if ( addressTag ) params.addressTag = addressTag;
-			signedRequest(wapi+"v3/withdraw.html", params, callback, "POST");
+			signedRequest(wapi+"v3/withdraw.html", params, callback, errorCallback, "POST");
 		},
-		withdrawHistory: function(callback, asset = false) {
+		withdrawHistory: function(callback = false, errorCallback = false, asset = false) {
 			let params = asset ? {asset:asset} : {};
-			signedRequest(wapi+"v3/withdrawHistory.html", params, callback);
+			signedRequest(wapi+"v3/withdrawHistory.html", params, callback, errorCallback);
 		},
-		depositHistory: function(callback, asset = false) {
+		depositHistory: function(callback = false, errorCallback = false, asset = false) {
 			let params = asset ? {asset:asset} : {};
-			signedRequest(wapi+"v3/depositHistory.html", params, callback);
+			signedRequest(wapi+"v3/depositHistory.html", params, callback, errorCallback);
 		},
-		depositAddress: function(asset, callback) {
-			signedRequest(wapi+"v3/depositAddress.html", {asset:asset}, callback);
+		depositAddress: function(asset, callback = false, errorCallback = false) {
+			signedRequest(wapi+"v3/depositAddress.html", {asset:asset}, callback, errorCallback);
 		},
-		accountStatus: function(callback) {
-			signedRequest(wapi+"v3/accountStatus.html", {}, callback);
+		accountStatus: function(callback = false, errorCallback = false) {
+			signedRequest(wapi+"v3/accountStatus.html", {}, callback, errorCallback);
 		},
-		account: function(callback) {
-			signedRequest(base+"v3/account", {}, callback);
+		account: function(callback = false, errorCallback = false) {
+			signedRequest(base+"v3/account", {}, callback, errorCallback);
 		},
-		balance: function(callback) {
+		balance: function(callback = false, errorCallback = false) {
 			signedRequest(base+"v3/account", {}, function(data) {
 				if ( callback ) callback(balanceData(data));
 			});
 		},
-		trades: function(symbol, callback) {
+		trades: function(symbol, callback = false, errorCallback = false) {
 			signedRequest(base+"v3/myTrades", {symbol:symbol}, function(data) {
 				if ( callback ) return callback.call(this, data, symbol);
-			});
+			}, errorCallback);
 		},
-		recentTrades: function(symbol, callback, limit = 500) {
-			signedRequest(base+"v1/trades", {symbol:symbol, limit:limit}, callback);
+		recentTrades: function(symbol, callback = false, errorCallback = false, limit = 500) {
+			signedRequest(base+"v1/trades", {symbol:symbol, limit:limit}, callback, errorCallback);
 		},
-		historicalTrades: function(symbol, callback, limit = 500) {
-			signedRequest(base+"v1/historicalTrades", {symbol:symbol, limit:limit}, callback);
+		historicalTrades: function(symbol, callback = false, errorCallback = false, limit = 500) {
+			signedRequest(base+"v1/historicalTrades", {symbol:symbol, limit:limit}, callback, errorCallback);
 		},
 		// convert chart data to highstock array [timestamp,open,high,low,close] 
 		highstock: function(chart, include_volume = false) {
@@ -572,11 +602,11 @@ module.exports = function() {
 				return callback.call(this, data, symbol);
 			});
 		},
-		publicRequest: function(url, data, callback, method = "GET") {
-			publicRequest(url, data, callback, method)
+		publicRequest: function(url, data, callback = false, errorCallback = false, method = "GET") {
+			publicRequest(url, data, callback, errorCallback, method)
 		},
-		signedRequest: function(url, data, callback, method = "GET") {
-			signedRequest(url, data, callback, method);
+		signedRequest: function(url, data, callback = false, errorCallback = false, method = "GET") {
+			signedRequest(url, data, callback, errorCallback, method);
 		},
 		getMarket: function(symbol) {
 			const substring = symbol.substr(-3);
